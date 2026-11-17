@@ -1,89 +1,85 @@
 # Seethrough
 
-**Transforme uma pintura em um relevo 3D que uma pessoa cega consegue sentir.**
+**Turn a painting into a 3D relief that a blind person can feel.**
 
-O Seethrough é uma ferramenta web: você envia a imagem de uma obra, ajusta o relevo e baixa um arquivo **STL** pronto para imprimir em uma impressora 3D. Tudo roda no navegador, sem servidor e sem enviar a imagem para lugar nenhum.
+Seethrough is a web tool: you upload an image of an artwork, tune the relief and download an **STL** file ready to print on a 3D printer. Everything runs in the browser, with no server and without sending the image anywhere.
 
-▶ **Demo online:** https://fabricio-bertolini.github.io/seethrough/
+▶ **Live demo:** https://fabricio-bertolini.github.io/seethrough/
 
 <p align="center">
-  <img src="docs/images/prototipo-paisagem.jpg" alt="Relevo da pintura impresso em quatro peças coladas" width="80%">
+  <img src="docs/images/prototype-landscape.jpg" alt="Relief of a painting printed in four glued pieces" width="80%">
 </p>
-<p align="center"><em>Protótipo real: relevo de uma pintura impresso em 4 peças (2 × 2) e coladas.</em></p>
+<p align="center"><em>Real prototype: a painting's relief printed in 4 pieces (2 × 2) and glued together.</em></p>
 
-> Projeto Final de Sistemas de Informação, UNILASALLE-RJ (Niterói).
+> Final project, Bachelor's in Information Systems, UNILASALLE-RJ (Niterói, Brazil).
 
 ---
 
-## Por que existe
+## Why it exists
 
-Pinturas comunicam forma por tom e por cor, então quem não enxerga fica de fora da maior parte da arte. Réplicas táteis existem, mas costumam ser feitas à mão: caras e raras. O Seethrough automatiza a tradução **imagem → relevo**, e foi pensado para funcionar mesmo em impressoras 3D simples, porque de nada adianta um relevo que só uma máquina cara consegue imprimir.
+Paintings communicate form through tone and color, so people who can't see are left out of most art. Tactile replicas exist, but they are usually handmade: expensive and rare. Seethrough automates the **image → relief** translation, and was designed to work even on simple 3D printers, because a relief that only an expensive machine can print is of little use.
 
-## O que ele faz
+## What it does
 
-| Recurso | Descrição |
+| Feature | Description |
 | --- | --- |
-| **Modo pintura a óleo** | Detecta contornos pela **cor** (e não só pelo brilho) e adiciona uma textura leve de pinceladas. Em óleo, cores diferentes podem ter o mesmo brilho, e o contorno some se só o claro e escuro forem usados. |
-| **Contorno em relevo, ou o contrário** | Você escolhe se as partes escuras (linhas e sombras) sobem, ou se as claras sobem. |
-| **Modo impressora simples** | Limita a resolução (≤ 80), força suavização e usa relevo e base de pelo menos 2,5 mm, para continuar legível ao toque em impressoras de bico largo. |
-| **Corte em peças** | Para obras maiores que a mesa de impressão: divide o relevo em grade, exporta um STL por peça num ZIP com guia de montagem, e a junção não deixa degrau. Aceita mesa circular. |
-| **Etiqueta em braille** | Gera a placa com o título e o nome do artista, em braille Grau 1, como STL separado. |
-| **Pré-visualização 3D** | Gira e confere o relevo antes de baixar. |
+| **Oil painting mode** | Detects outlines by **color** (not only brightness) and adds a light brushstroke texture. In oils, different colors can have the same brightness, and the outline vanishes if only light and dark are used. |
+| **Raised outline, or the opposite** | You choose whether the dark parts (lines and shadows) rise, or the light parts do. |
+| **Simple printer mode** | Limits resolution (≤ 80), forces smoothing and uses relief and base of at least 2.5 mm, to stay readable to the touch on wide-nozzle printers. |
+| **Cut into pieces** | For works larger than the print bed: splits the relief into a grid, exports one STL per piece in a ZIP with an assembly guide, and the joint leaves no step. Supports round beds. |
+| **Braille label** | Generates a plate with the title and the artist's name, in Grade 1 braille, as a separate STL. |
+| **3D preview** | Rotate and check the relief before downloading. |
 
 <p align="center">
-  <img src="docs/images/app-preview-3d.png" alt="Relevo gerado no programa" width="38%">
+  <img src="docs/images/app-preview-3d.png" alt="Relief generated in the program" width="38%">
   &nbsp;
-  <img src="docs/images/app-parametros-relevo.png" alt="Parâmetros do relevo" width="26%">
+  <img src="docs/images/app-relief-settings.png" alt="Relief settings" width="26%">
   &nbsp;
-  <img src="docs/images/app-parametros-tamanho.png" alt="Tamanho e corte em peças" width="30%">
+  <img src="docs/images/app-size-and-cut.png" alt="Size and cut into pieces" width="30%">
 </p>
 
-## Como usar
+## How to use
 
-1. Abra a [demo online](https://fabricio-bertolini.github.io/seethrough/), ou o arquivo `index.html` no navegador.
-2. Arraste a imagem da obra para a página.
-3. Escolha o tipo (por exemplo, *Oil painting*), ajuste o tamanho em mm e, se a impressora for básica, ative o **Simple printer mode**.
-4. Se a obra não cabe na mesa, ative **Cut into pieces** e informe a área útil.
-5. Clique em **Download relief STL** e fatie o arquivo no programa da sua impressora.
+1. Open the [live demo](https://fabricio-bertolini.github.io/seethrough/), or the `index.html` file in your browser.
+2. Drag the artwork image onto the page.
+3. Pick the type (for example, *Oil painting*), set the size in mm and, if the printer is basic, turn on **Simple printer mode**.
+4. If the work doesn't fit on the bed, turn on **Cut into pieces** and enter the usable area.
+5. Click **Download relief STL** and slice the file in your printer's software.
 
-> A interface está em inglês. O arquivo é um único HTML, sem instalação. É preciso internet ao abrir, porque a pré-visualização carrega a biblioteca three.js de um CDN.
+> The interface is in English. The app is a single HTML file, no installation. An internet connection is needed when opening it, because the preview loads the three.js library from a CDN.
 
-## Como funciona
+## How it works
 
 <p align="center">
-  <img src="docs/images/diagramas/pipeline.png" alt="Pipeline do Seethrough" width="85%">
+  <img src="docs/images/diagrams/pipeline.png" alt="Seethrough pipeline" width="85%">
 </p>
 
-1. **Reamostragem:** a imagem vira uma grade de pontos (resolução ajustável, até 200).
-2. **Mapa de altura:** cada ponto ganha uma altura a partir do brilho, das bordas e, opcionalmente, de uma textura de pinceladas.
-3. **Bordas por cor:** o filtro de Sobel é aplicado à luminância e a duas diferenças de cor (R − L e B − L), e as três são combinadas.
-4. **Malha estanque:** topo, fundo plano e quatro paredes formam um sólido fechado, que imprime deitado e sem suportes.
-5. **Exportação:** STL binário, escrito no próprio navegador. Em modo de corte, um ZIP com um STL por peça.
-6. **Braille:** o texto vira células (Grau 1) e cada ponto é uma cúpula 3D sobre uma placa, em STL separado.
+1. **Resampling:** the image becomes a grid of points (adjustable resolution, up to 200).
+2. **Heightmap:** each point gets a height from brightness, edges and, optionally, a brushstroke texture.
+3. **Color edges:** the Sobel filter is applied to luminance and to two color differences (R − L and B − L), and the three are combined.
+4. **Watertight mesh:** top, flat bottom and four walls form a closed solid that prints lying down and without supports.
+5. **Export:** binary STL, written in the browser itself. In cut mode, a ZIP with one STL per piece.
+6. **Braille:** text becomes cells (Grade 1) and each dot is a 3D dome on a plate, as a separate STL.
 
-Os demais diagramas estão em [`docs/images/diagramas`](docs/images/diagramas), e a descrição completa está no anteprojeto.
+The other diagrams are in [`docs/images/diagrams`](docs/images/diagrams), and the full description is in the project proposal.
 
-## Tecnologias
+## Tech
 
-HTML, CSS e JavaScript puro em um único arquivo · Canvas API para o processamento de imagem · [three.js](https://threejs.org/) (r128) para a pré-visualização · geração de STL binário e de ZIP (com CRC32) escrita à mão.
+Plain HTML, CSS and JavaScript in a single file · Canvas API for image processing · [three.js](https://threejs.org/) (r128) for the preview · binary STL and ZIP (with CRC32) generation written by hand.
 
-## Status e limites conhecidos
+## Status and known limits
 
-- ✅ O programa está completo e foi testado com testes automatizados (peças fechadas, volumes somando o total, ZIP íntegro).
-- ✅ Já existe um **protótipo impresso** em 4 peças.
-- ⏳ **Ainda não foi testado com pessoas cegas.** É o passo mais importante, porque só elas podem dizer se o relevo é legível.
-- Nas peças impressas, as emendas ainda aparecem e os cantos saíram chanfrados. Ainda não se sabe se a causa é a imagem ou o corte.
-- O braille cobre letras, dígitos e pontuação básica. **Letras acentuadas são escritas sem o acento** (por exemplo, "é" vira "e"); as células próprias do português ficam como melhoria futura.
+- ✅ The program is complete and was checked with automated tests (closed pieces, volumes summing to the total, intact ZIP).
+- ✅ A **printed prototype** in 4 pieces already exists.
+- ⏳ **Not yet tested with blind people.** This is the most important next step, because only they can say whether the relief is legible.
+- On the printed pieces, the seams still show and the corners came out chamfered. It is not yet known whether the cause is the image or the cut.
+- Braille covers letters, digits and basic punctuation. **Accented letters are written without the accent** (for example, "é" becomes "e"); the dedicated Portuguese cells are future work.
 
-## Documentação
+## Documentation
 
-- 📄 [Anteprojeto (PDF)](docs/Anteprojeto.pdf), com fundamentação, objetivos, cronograma e diagramas.
-- 📊 [Apresentação (PPTX)](docs/Apresentacao.pptx)
+- 📄 [Project proposal (PDF)](docs/Project-Proposal.pdf), with background, objectives, schedule and diagrams.
+- 📊 [Presentation (PPTX)](docs/Presentation.pptx)
 
-## Resumo em inglês
-
-**Seethrough** is a client-side web tool that turns an image, especially an oil painting, into a 3D-printable relief (STL) so blind people can feel the artwork. It detects edges from both brightness and color, has a simple-printer mode for low-end FDM machines, can cut large reliefs into printable tiles with an assembly guide, and generates a Grade 1 braille label. Everything runs in the browser. A physical prototype printed in four glued tiles exists; tactile testing with blind readers is the next step.
-
-## Licença
+## License
 
 [MIT](LICENSE) © 2026 Fabrício Valladares Bertolini
