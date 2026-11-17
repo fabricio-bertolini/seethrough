@@ -4,7 +4,7 @@
 
 O Seethrough é uma ferramenta web: você envia a imagem de uma obra, ajusta o relevo e baixa um arquivo **STL** pronto para imprimir em uma impressora 3D. Tudo roda no navegador, sem servidor e sem enviar a imagem para lugar nenhum.
 
-▶ **Demo online:** https://USUARIO.github.io/seethrough/
+▶ **Demo online:** https://fabricio-bertolini.github.io/seethrough/
 
 <p align="center">
   <img src="docs/images/prototipo-paisagem.jpg" alt="Relevo da pintura impresso em quatro peças coladas" width="80%">
@@ -40,7 +40,7 @@ Pinturas comunicam forma por tom e por cor, então quem não enxerga fica de for
 
 ## Como usar
 
-1. Abra a [demo online](https://USUARIO.github.io/seethrough/), ou o arquivo `index.html` no navegador.
+1. Abra a [demo online](https://fabricio-bertolini.github.io/seethrough/), ou o arquivo `index.html` no navegador.
 2. Arraste a imagem da obra para a página.
 3. Escolha o tipo (por exemplo, *Oil painting*), ajuste o tamanho em mm e, se a impressora for básica, ative o **Simple printer mode**.
 4. Se a obra não cabe na mesa, ative **Cut into pieces** e informe a área útil.
