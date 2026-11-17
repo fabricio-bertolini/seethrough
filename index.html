@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seethrough — image to tactile STL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg: #1c1a17;
+    --panel: #242019;
+    --panel-2: #2b2620;
+    --line: #3a332a;
+    --text: #f2ece0;
+    --text-dim: #b3a998;
+    --amber: #e0a13c;
+    --amber-dim: #8a6a34;
+    --teal: #5cb8ab;
+    --danger: #d9694f;
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  body{min-height:100vh;}
+
+  .dotband{
+    height:14px;
+    background-image: radial-gradient(var(--amber-dim) 1.2px, transparent 1.2px);
+    background-size: 10px 10px;
+    opacity:.55;
+  }
+
+  header{
+    padding:28px 32px 18px 32px;
+    border-bottom:1px solid var(--line);
+  }
+  header h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:28px;
+    letter-spacing:-0.01em;
+    margin:0 0 6px 0;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  header h1 .dot{
+    width:9px;height:9px;border-radius:50%;background:var(--amber);display:inline-block;
+  }
+  header p{
+    margin:0;
+    color:var(--text-dim);
+    font-size:14.5px;
+    max-width:640px;
+    line-height:1.5;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns: 380px 1fr;
+    gap:0;
+    min-height: calc(100vh - 110px);
+  }
+  @media (max-width: 880px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .controls{
+    border-right:1px solid var(--line);
+    padding:24px;
+    overflow-y:auto;
+  }
+  .stage{
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:var(--radius);
+    padding:22px;
+    text-align:center;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease;
+    background: var(--panel);
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color: var(--amber);
+    background: var(--panel-2);
+  }
+  .dropzone svg{ opacity:.7; margin-bottom:8px; }
+  .dropzone .main{ font-size:14px; color:var(--text); }
+  .dropzone .sub{ font-size:12px; color:var(--text-dim); margin-top:3px;}
+  #fileInput{ display:none; }
+
+  .thumb-row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-top:12px;
+  }
+  .thumb-row img{
+    width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line);
+  }
+  .thumb-row .fname{
+    font-size:12.5px;color:var(--text-dim);
+    font-family:'IBM Plex Mono',monospace;
+    word-break:break-all;
+  }
+
+  fieldset{
+    border:none;
+    padding:0;
+    margin:22px 0 0 0;
+  }
+  legend{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin-bottom:12px;
+    padding:0;
+  }
+  .legend-sub{
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin:-8px 0 12px 0;
+    line-height:1.4;
+  }
+
+  .field{
+    margin-bottom:16px;
+  }
+  .field-label{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:13px;
+    margin-bottom:6px;
+  }
+  .field-label span.val{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--teal);
+  }
+  input[type=range]{
+    width:100%;
+    accent-color: var(--amber);
+    height:4px;
+  }
+  input[type=range]:disabled{
+    opacity:.35;
+  }
+  input[type=number], input[type=text]{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:6px;
+    padding:7px 9px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+  }
+  input[type=text]::placeholder{ color:#6b6255; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+  .toggle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:9px 0;
+    font-size:13.5px;
+    border-bottom:1px solid var(--line);
+    gap:12px;
+  }
+  .toggle span.lbl{ flex:1; }
+  .toggle small{ display:block; color:var(--text-dim); font-size:11px; font-weight:400; margin-top:2px; }
+  .toggle:last-child{ border-bottom:none; }
+  .switch{
+    position:relative; width:38px; height:21px; flex:none;
+  }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider-pill{
+    position:absolute; cursor:pointer; inset:0;
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:20px; transition:.15s;
+  }
+  .slider-pill:before{
+    content:""; position:absolute; height:15px; width:15px; left:2px; top:2px;
+    background:var(--text-dim); border-radius:50%; transition:.15s;
+  }
+  .switch input:checked + .slider-pill{ background:var(--amber-dim); border-color:var(--amber); }
+  .switch input:checked + .slider-pill:before{ transform:translateX(17px); background:var(--amber); }
+
+  select{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:6px;
+    padding:8px 9px;
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+  }
+
+  .btn{
+    width:100%;
+    padding:12px 14px;
+    border-radius:8px;
+    border:none;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    cursor:pointer;
+    letter-spacing:.01em;
+  }
+  .btn-primary{
+    background:var(--amber);
+    color:#231a0d;
+    margin-top:20px;
+  }
+  .btn-primary:disabled{
+    background:var(--panel-2);
+    color:var(--text-dim);
+    cursor:not-allowed;
+  }
+  .btn-secondary{
+    background:var(--teal);
+    color:#0e211e;
+    margin-top:12px;
+  }
+  .btn-secondary:disabled{
+    background:var(--panel-2);
+    color:var(--text-dim);
+    cursor:not-allowed;
+  }
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    margin-top:8px;
+  }
+
+  .stat-strip{
+    display:flex;
+    gap:18px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    color:var(--text-dim);
+    padding:10px 2px 0 2px;
+    flex-wrap:wrap;
+  }
+  .stat-strip b{ color:var(--text); }
+
+  .preview-wrap{
+    flex:1;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    position:relative;
+    min-height:420px;
+    overflow:hidden;
+  }
+  .preview-wrap canvas{ display:block; width:100%; height:100%; }
+  .preview-hint{
+    position:absolute; bottom:10px; left:12px;
+    font-size:11.5px; color:var(--text-dim);
+    font-family:'IBM Plex Mono',monospace;
+    pointer-events:none;
+  }
+  .empty-state{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:8px;
+    color:var(--text-dim);
+    font-size:14px;
+    text-align:center;
+    padding:20px;
+  }
+  .empty-state .dots{
+    display:grid; grid-template-columns:repeat(6,7px); gap:4px; margin-bottom:6px;
+  }
+  .empty-state .dots div{ width:7px;height:7px;border-radius:50%;background:var(--line); }
+
+  .note{
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    font-size:12.8px;
+    line-height:1.55;
+    color:var(--text-dim);
+  }
+  .note strong{ color:var(--text); }
+  .note a{ color: var(--teal); }
+
+  .spinner{
+    width:14px;height:14px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.25); border-top-color:var(--amber);
+    animation:spin .7s linear infinite; display:inline-block; vertical-align:middle; margin-right:7px;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #procStatus{ font-size:12px; color:var(--text-dim); min-height:16px; margin-top:8px; }
+
+  .braille-preview{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px;
+    margin-top:6px;
+  }
+  .braille-preview canvas{ display:block; width:100%; }
+  .braille-stats{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="dotband"></div>
+<header>
+  <h1><span class="dot"></span>Seethrough</h1>
+  <p>Turn any image into a tactile relief — export a watertight STL you can 3D print, so the shapes in an image can be felt by hand. Includes a tuned mode for oil paintings and a braille label generator for titles and signatures.</p>
+</header>
+
+<div class="layout">
+  <div class="controls">
+
+    <div class="dropzone" id="dropzone">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e0a13c" stroke-width="1.6"><path d="M12 3v12m0-12l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      <div class="main">Drop an image, or click to upload</div>
+      <div class="sub">PNG, JPG — photos, line art, or oil paintings</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <div class="thumb-row" id="thumbRow" style="display:none;">
+      <img id="thumbImg" alt="">
+      <div class="fname" id="fname"></div>
+    </div>
+
+    <fieldset>
+      <legend>Printer compatibility</legend>
+      <div class="toggle">
+        <span class="lbl">Simple printer mode
+          <small>For basic/entry-level FDM printers (larger nozzle, less precision). Caps mesh resolution, forces extra smoothing, raises minimum relief/base thickness, and turns off fine brushstroke texture — favoring wide, unambiguous plateaus a coarse nozzle can still reproduce, so the piece stays readable by touch even when fine detail can't survive the print.</small>
+        </span>
+        <label class="switch"><input type="checkbox" id="simplePrinterMode"><span class="slider-pill"></span></label>
+      </div>
+      <div id="simplePrinterNote" style="display:none; margin-top:10px; font-size:12px; color:var(--teal); line-height:1.5;">
+        Active: resolution capped at 80, smoothing ≥ 2, texture disabled, relief ≥ 2.5&nbsp;mm, base ≥ 2.5&nbsp;mm. Consider also raising "Detail levels" below to a few discrete steps — a handful of clearly separated plateaus tends to be more reliable to feel on a low-precision printer than a smooth continuous slope.
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Relief mode</legend>
+      <div class="field">
+        <div class="field-label"><span>Source type (sets starting defaults)</span></div>
+        <select id="sourceType">
+          <option value="general">General</option>
+          <option value="oil" selected>Oil painting</option>
+          <option value="line">Line art</option>
+          <option value="photo">Photo</option>
+        </select>
+      </div>
+      <div class="field">
+        <select id="mode">
+          <option value="dark" selected>Raise dark areas (lines &amp; shadows lift up)</option>
+          <option value="light">Raise light areas (highlights lift up)</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label"><span>Edge emphasis</span><span class="val" id="edgeVal">45%</span></div>
+        <input type="range" id="edge" min="0" max="100" value="45">
+      </div>
+      <div class="toggle">
+        <span class="lbl">Color boundary detection
+          <small>Finds edges between colors of similar brightness — common in oil paintings where hue, not just light/dark, defines a shape</small>
+        </span>
+        <label class="switch"><input type="checkbox" id="colorBoundary" checked><span class="slider-pill"></span></label>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <div class="field-label"><span>Brushstroke texture</span><span class="val" id="textureVal">25%</span></div>
+        <input type="range" id="texture" min="0" max="100" value="25">
+      </div>
+      <div class="field">
+        <div class="field-label"><span>Detail levels (0 = smooth gradient)</span><span class="val" id="posterVal">Off</span></div>
+        <input type="range" id="poster" min="0" max="10" value="0">
+      </div>
+      <div class="field">
+        <div class="field-label"><span>Smoothing</span><span class="val" id="smoothVal">2</span></div>
+        <input type="range" id="smooth" min="0" max="3" value="2">
+      </div>
+      <div class="toggle">
+        <span class="lbl">Auto-contrast</span>
+        <label class="switch"><input type="checkbox" id="autoContrast" checked><span class="slider-pill"></span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Physical size</legend>
+      <div class="row2">
+        <div class="field">
+          <div class="field-label"><span>Width (mm)</span></div>
+          <input type="number" id="widthMM" value="100" min="20" max="300" step="1">
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Height (mm)</span></div>
+          <input type="number" id="heightMM" value="100" min="20" max="300" step="1" disabled>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <div class="field-label"><span>Base (mm)</span></div>
+          <input type="number" id="baseMM" value="2" min="1" max="5" step="0.5">
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Relief height (mm)</span></div>
+          <input type="number" id="reliefMM" value="3" min="0.5" max="8" step="0.5">
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label"><span>Mesh resolution</span><span class="val" id="resVal">120</span></div>
+        <input type="range" id="res" min="40" max="200" value="120" step="10">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Split for small print volume</legend>
+      <div class="toggle">
+        <span class="lbl">Cut into pieces
+          <small>For printers with a small bed or a tall, narrow build area. The relief is cut along straight lines into equal pieces that each fit your limits; every piece is its own closed, flat-bottomed STL, so no piece needs supports. Glue them together after printing.</small>
+        </span>
+        <label class="switch"><input type="checkbox" id="splitEnabled"><span class="slider-pill"></span></label>
+      </div>
+      <div id="splitControls" style="display:none; margin-top:12px;">
+        <div class="row2">
+          <div class="field">
+            <div class="field-label"><span>Max piece width (mm)</span></div>
+            <input type="number" id="maxPieceW" value="80" min="20" max="300" step="5">
+          </div>
+          <div class="field">
+            <div class="field-label"><span>Max piece length (mm)</span></div>
+            <input type="number" id="maxPieceH" value="80" min="20" max="300" step="5">
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Round bed diameter (mm) — delta printers, optional</span></div>
+          <input type="number" id="bedDiameter" value="" placeholder="e.g. 150" min="0" max="500" step="5">
+        </div>
+        <div id="splitInfo" style="font-size:12px; color:var(--teal); line-height:1.5;"></div>
+      </div>
+    </fieldset>
+
+    <button class="btn btn-primary" id="downloadBtn" disabled>Download relief STL</button>
+    <button class="btn btn-ghost" id="resetBtn">Reset settings</button>
+    <div class="stat-strip" id="statStrip"></div>
+    <div id="procStatus"></div>
+
+    <fieldset>
+      <legend>Braille label (optional)</legend>
+      <div class="legend-sub">Generates a separate raised-dot Grade 1 (uncontracted) braille tag — print it alongside the relief and attach it, or display it next to the piece.</div>
+      <div class="field">
+        <div class="field-label"><span>Title</span></div>
+        <input type="text" id="brailleTitle" placeholder="e.g. Starry Night">
+      </div>
+      <div class="field">
+        <div class="field-label"><span>Artist / signature</span></div>
+        <input type="text" id="brailleArtist" placeholder="e.g. Vincent van Gogh">
+      </div>
+      <div class="braille-preview">
+        <canvas id="brailleCanvas" width="600" height="140"></canvas>
+        <div class="braille-stats" id="brailleStats">Enter a title or artist to preview the braille cells.</div>
+      </div>
+      <button class="btn btn-secondary" id="brailleDownloadBtn" disabled>Download braille label STL</button>
+    </fieldset>
+  </div>
+
+  <div class="stage">
+    <div class="preview-wrap" id="previewWrap">
+      <div class="empty-state" id="emptyState">
+        <div class="dots"><div></div><div></div><div></div><div></div><div></div><div></div></div>
+        <div>Upload an image to generate a tactile preview</div>
+      </div>
+    </div>
+    <div class="note">
+      <strong>Before you print or hand this off:</strong> this tool gives a solid first pass, but good tactile graphics
+      follow conventions this app doesn't fully know — like keeping raised lines simple, spaced apart, and testing
+      legibility by touch before relying on it. The oil-painting mode leans on color-boundary detection and a light
+      brushstroke texture, but it's still a best-effort translation of a visual medium — busy, highly detailed
+      paintings will read more ambiguously by touch than simple, high-contrast ones. The braille output is uncontracted
+      Grade 1 and a best-effort encoding (accented characters render as a blank cell); if this is for an actual blind
+      reader, have them or someone trained in tactile graphics — e.g. the
+      <a href="https://www.aph.org/" target="_blank" rel="noopener">American Printing House</a> — check a test print.
+      No supports are needed for either model — both are flat-bottomed solids. If you're printing on a basic or
+      entry-level FDM printer, turn on <strong>Simple printer mode</strong> — the primary goal is still a piece a
+      blind reader can actually feel, even if that means a visually cruder, lower-resolution STL. If the artwork
+      is larger than your printer's bed (or you have a small or tall, narrow build area), turn on
+      <strong>Cut into pieces</strong>: you get one STL per piece plus an assembly guide, and the heights match
+      exactly across every cut so the glued seam stays smooth under the fingers.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Limits that the UI text also mentions; keep the two in sync.
+  const FULL_MAX_RESOLUTION = 200;
+  const SIMPLE_MODE = { maxResolution: 80, minSmoothing: 2, minThicknessMM: 2.5 };
+  const TEXTURE_GAIN = 0.35;       // how strongly brushstroke texture is added to the height
+  const PREVIEW_GAP_MM = 6;        // spacing between pieces in the 3D preview only
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const thumbRow = document.getElementById('thumbRow');
+  const thumbImg = document.getElementById('thumbImg');
+  const fname = document.getElementById('fname');
+  const emptyState = document.getElementById('emptyState');
+  const previewWrap = document.getElementById('previewWrap');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statStrip = document.getElementById('statStrip');
+  const procStatus = document.getElementById('procStatus');
+
+  const ctrl = {
+    mode: document.getElementById('mode'),
+    edge: document.getElementById('edge'),
+    colorBoundary: document.getElementById('colorBoundary'),
+    texture: document.getElementById('texture'),
+    poster: document.getElementById('poster'),
+    smooth: document.getElementById('smooth'),
+    autoContrast: document.getElementById('autoContrast'),
+    widthMM: document.getElementById('widthMM'),
+    heightMM: document.getElementById('heightMM'),
+    baseMM: document.getElementById('baseMM'),
+    reliefMM: document.getElementById('reliefMM'),
+    res: document.getElementById('res'),
+    splitEnabled: document.getElementById('splitEnabled'),
+    maxPieceW: document.getElementById('maxPieceW'),
+    maxPieceH: document.getElementById('maxPieceH'),
+    bedDiameter: document.getElementById('bedDiameter'),
+  };
+  const splitEl = ctrl.splitEnabled;
+  const splitInfo = document.getElementById('splitInfo');
+  const splitControls = document.getElementById('splitControls');
+  splitEl.addEventListener('change', () => {
+    splitControls.style.display = splitEl.checked ? 'block' : 'none';
+  });
+  const vals = {
+    edge: document.getElementById('edgeVal'),
+    texture: document.getElementById('textureVal'),
+    poster: document.getElementById('posterVal'),
+    smooth: document.getElementById('smoothVal'),
+    res: document.getElementById('resVal'),
+  };
+
+  let img = null;
+  let lastPieces = [];
+  let lastCols = 1, lastRows = 1;
+  let imgAspect = 1;
+
+  // ---------- Source type presets ----------
+  const presets = {
+    general: { edge:35, smooth:1, poster:0, colorBoundary:false, texture:0 },
+    oil:     { edge:45, smooth:2, poster:0, colorBoundary:true,  texture:25 },
+    line:    { edge:70, smooth:0, poster:0, colorBoundary:false, texture:0 },
+    photo:   { edge:25, smooth:1, poster:0, colorBoundary:false, texture:0 },
+  };
+  document.getElementById('sourceType').addEventListener('change', e => {
+    const p = presets[e.target.value];
+    if (!p) return;
+    ctrl.edge.value = p.edge;
+    ctrl.smooth.value = p.smooth;
+    ctrl.poster.value = p.poster;
+    ctrl.colorBoundary.checked = p.colorBoundary;
+    ctrl.texture.value = p.texture;
+    syncLabels();
+    scheduleRecompute();
+  });
+
+  // ---------- Simple printer mode ----------
+  const simplePrinterEl = document.getElementById('simplePrinterMode');
+  const simplePrinterNote = document.getElementById('simplePrinterNote');
+
+  function applySimplePrinterConstraints(){
+    const on = simplePrinterEl.checked;
+    simplePrinterNote.style.display = on ? 'block' : 'none';
+    ctrl.texture.disabled = on;
+    if (on){
+      ctrl.res.max = SIMPLE_MODE.maxResolution;
+      if (parseInt(ctrl.res.value,10) > SIMPLE_MODE.maxResolution) ctrl.res.value = SIMPLE_MODE.maxResolution;
+      if (parseInt(ctrl.smooth.value,10) < SIMPLE_MODE.minSmoothing) ctrl.smooth.value = SIMPLE_MODE.minSmoothing;
+      ctrl.texture.value = 0;
+      for (const field of [ctrl.baseMM, ctrl.reliefMM]){
+        field.min = SIMPLE_MODE.minThicknessMM;
+        if (parseFloat(field.value) < SIMPLE_MODE.minThicknessMM) field.value = SIMPLE_MODE.minThicknessMM;
+      }
+    } else {
+      ctrl.res.max = FULL_MAX_RESOLUTION;
+      ctrl.baseMM.min = '1';
+      ctrl.reliefMM.min = '0.5';
+    }
+  }
+  simplePrinterEl.addEventListener('change', () => {
+    applySimplePrinterConstraints();
+    syncLabels();
+    scheduleRecompute();
+  });
+
+  // ---------- Upload handling ----------
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault(); dropzone.classList.remove('drag');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+  function loadFile(file){
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const image = new Image();
+      image.onload = () => {
+        img = image;
+        imgAspect = img.height / img.width;
+        thumbImg.src = ev.target.result;
+        fname.textContent = file.name;
+        thumbRow.style.display = 'flex';
+        ctrl.heightMM.value = Math.round(parseFloat(ctrl.widthMM.value) * imgAspect);
+        initThreeIfNeeded();
+        emptyState.style.display = 'none';
+        downloadBtn.disabled = false;
+        scheduleRecompute();
+      };
+      image.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  ctrl.widthMM.addEventListener('input', () => {
+    ctrl.heightMM.value = Math.round(parseFloat(ctrl.widthMM.value||0) * imgAspect);
+    scheduleRecompute();
+  });
+
+  // ---------- Live value labels ----------
+  function syncLabels(){
+    vals.edge.textContent = ctrl.edge.value + '%';
+    vals.texture.textContent = ctrl.texture.value + '%';
+    vals.poster.textContent = ctrl.poster.value === '0' ? 'Off' : ctrl.poster.value;
+    vals.smooth.textContent = ctrl.smooth.value;
+    vals.res.textContent = ctrl.res.value;
+  }
+  Object.values(ctrl).forEach(el => {
+    const evt = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input';
+    el.addEventListener(evt, () => { syncLabels(); scheduleRecompute(); });
+  });
+  syncLabels();
+
+  resetBtn.addEventListener('click', () => {
+    document.getElementById('sourceType').value = 'oil';
+    const p = presets.oil;
+    ctrl.mode.value = 'dark';
+    ctrl.edge.value = p.edge; ctrl.smooth.value = p.smooth; ctrl.poster.value = p.poster;
+    ctrl.colorBoundary.checked = p.colorBoundary; ctrl.texture.value = p.texture;
+    ctrl.autoContrast.checked = true;
+    simplePrinterEl.checked = false;
+    applySimplePrinterConstraints();
+    ctrl.baseMM.value = 2; ctrl.reliefMM.value = 3; ctrl.res.value = 120;
+    splitEl.checked = false; splitControls.style.display = 'none';
+    ctrl.maxPieceW.value = 80; ctrl.maxPieceH.value = 80; ctrl.bedDiameter.value = '';
+    syncLabels(); scheduleRecompute();
+  });
+
+  // ---------- Debounced recompute ----------
+  let pending = false;
+  function scheduleRecompute(){
+    if (!img || pending) return;
+    pending = true;
+    requestAnimationFrame(() => { pending = false; recompute(); });
+  }
+
+  // ---------- Shared helpers ----------
+  function boxBlur(src, gridW, gridH, iterations){
+    let cur = src;
+    for (let it=0; it<iterations; it++){
+      const dst = new Float32Array(gridW*gridH);
+      for (let y=0;y<gridH;y++){
+        for (let x=0;x<gridW;x++){
+          let sum=0, cnt=0;
+          for (let dy=-1;dy<=1;dy++){
+            for (let dx=-1;dx<=1;dx++){
+              const xx=x+dx, yy=y+dy;
+              if (xx>=0&&xx<gridW&&yy>=0&&yy<gridH){ sum+=cur[yy*gridW+xx]; cnt++; }
+            }
+          }
+          dst[y*gridW+x] = sum/cnt;
+        }
+      }
+      cur = dst;
+    }
+    return cur;
+  }
+
+  function sobelMagnitude(arr, gridW, gridH){
+    const n = gridW*gridH;
+    const mag = new Float32Array(n);
+    let maxV = 1e-6;
+    for (let y=0;y<gridH;y++){
+      for (let x=0;x<gridW;x++){
+        const xm=Math.max(0,x-1), xp=Math.min(gridW-1,x+1);
+        const ym=Math.max(0,y-1), yp=Math.min(gridH-1,y+1);
+        const tl=arr[ym*gridW+xm], tc=arr[ym*gridW+x], tr=arr[ym*gridW+xp];
+        const ml=arr[y*gridW+xm], mr=arr[y*gridW+xp];
+        const bl=arr[yp*gridW+xm], bc=arr[yp*gridW+x], br=arr[yp*gridW+xp];
+        const gx=(tr+2*mr+br)-(tl+2*ml+bl);
+        const gy=(bl+2*bc+br)-(tl+2*tc+tr);
+        const m=Math.sqrt(gx*gx+gy*gy);
+        mag[y*gridW+x]=m;
+        if (m>maxV) maxV=m;
+      }
+    }
+    for (let i=0;i<n;i++) mag[i]/=maxV;
+    return mag;
+  }
+
+  // ---------- Heightmap + mesh pipeline ----------
+  const work = document.createElement('canvas');
+  const wctx = work.getContext('2d', { willReadFrequently: true });
+
+  function computeHeightmap(gridW, gridH){
+    work.width = gridW; work.height = gridH;
+    wctx.imageSmoothingEnabled = true;
+    wctx.imageSmoothingQuality = 'high';
+    wctx.clearRect(0,0,gridW,gridH);
+    wctx.drawImage(img, 0, 0, gridW, gridH);
+    const data = wctx.getImageData(0,0,gridW,gridH).data;
+
+    const n = gridW*gridH;
+    const lum = new Float32Array(n);
+    const cb = new Float32Array(n);
+    const cr = new Float32Array(n);
+    for (let i=0;i<n;i++){
+      const r=data[i*4]/255, g=data[i*4+1]/255, b=data[i*4+2]/255;
+      const L = 0.299*r + 0.587*g + 0.114*b;
+      lum[i]=L; cb[i]=b-L; cr[i]=r-L;
+    }
+
+    const edgeL = sobelMagnitude(lum, gridW, gridH);
+    let combinedEdge = edgeL;
+    if (ctrl.colorBoundary.checked){
+      const edgeCb = sobelMagnitude(cb, gridW, gridH);
+      const edgeCr = sobelMagnitude(cr, gridW, gridH);
+      combinedEdge = new Float32Array(n);
+      let maxV = 1e-6;
+      for (let i=0;i<n;i++){
+        const v = Math.sqrt(edgeL[i]*edgeL[i] + edgeCb[i]*edgeCb[i] + edgeCr[i]*edgeCr[i]);
+        combinedEdge[i]=v; if (v>maxV) maxV=v;
+      }
+      for (let i=0;i<n;i++) combinedEdge[i]/=maxV;
+    }
+
+    const raiseDark = ctrl.mode.value === 'dark';
+    const edgeW = parseInt(ctrl.edge.value,10)/100;
+    let h = new Float32Array(n);
+    for (let i=0;i<n;i++){
+      const base = raiseDark ? (1-lum[i]) : lum[i];
+      h[i] = base*(1-edgeW) + combinedEdge[i]*edgeW;
+    }
+
+    // smoothing
+    const iterations = parseInt(ctrl.smooth.value,10);
+    h = boxBlur(h, gridW, gridH, iterations);
+
+    // posterize
+    const levels = parseInt(ctrl.poster.value,10);
+    if (levels >= 2){
+      for (let i=0;i<n;i++) h[i] = Math.round(h[i]*(levels-1))/(levels-1);
+    }
+
+    // brushstroke micro-texture (from original luminance high-pass)
+    const textureStrength = parseInt(ctrl.texture.value,10)/100;
+    if (textureStrength > 0){
+      const blurredLum = boxBlur(lum, gridW, gridH, 1);
+      let maxAbs = 1e-6;
+      const highpass = new Float32Array(n);
+      for (let i=0;i<n;i++){ highpass[i]=lum[i]-blurredLum[i]; const a=Math.abs(highpass[i]); if (a>maxAbs) maxAbs=a; }
+      for (let i=0;i<n;i++){
+        h[i] = Math.min(1, Math.max(0, h[i] + (highpass[i]/maxAbs)*textureStrength*TEXTURE_GAIN));
+      }
+    }
+
+    // auto-contrast
+    if (ctrl.autoContrast.checked){
+      let mn=1, mx=0;
+      for (let i=0;i<n;i++){ if (h[i]<mn) mn=h[i]; if (h[i]>mx) mx=h[i]; }
+      const range = Math.max(mx-mn, 1e-6);
+      for (let i=0;i<n;i++) h[i] = (h[i]-mn)/range;
+    }
+
+    return h;
+  }
+
+  // <<SPLIT-PURE-START>>
+  // Cut positions (in grid cells) that divide `cells` cells into the fewest equal-ish
+  // pieces such that every piece is at most maxMM long.
+  function partition(cells, cellMM, maxMM){
+    let n = Math.max(1, Math.ceil(cells*cellMM/maxMM - 1e-9));
+    n = Math.min(n, cells);
+    while (n < cells && Math.ceil(cells/n)*cellMM > maxMM + 1e-9) n++;
+    const bounds = [];
+    for (let k=0;k<=n;k++) bounds.push(Math.round(k*cells/n));
+    return bounds;
+  }
+
+  // Closed, flat-bottomed solid for the sub-grid [i0..i1] x [j0..j1] of a shared height field.
+  // Pieces are built in local coordinates (origin at the piece's own corner) so each one
+  // can be exported and printed on its own. Because every piece reads the same topZ values,
+  // the heights along a cut are identical on both sides — the seam is continuous.
+  function buildPieceSoup(topZ, gridW, i0, i1, j0, j1, dx, dy){
+    const cellsX = i1-i0, cellsY = j1-j0;
+    const totalTris = cellsX*cellsY*4 + (cellsX*2 + cellsY*2)*2;
+    const pos = new Float32Array(totalTris*9);
+    let p = 0;
+    const X = i => (i-i0)*dx;
+    const Y = j => (j-j0)*dy;
+    function addTri(x1,y1,z1,x2,y2,z2,x3,y3,z3){
+      pos[p++]=x1;pos[p++]=y1;pos[p++]=z1;
+      pos[p++]=x2;pos[p++]=y2;pos[p++]=z2;
+      pos[p++]=x3;pos[p++]=y3;pos[p++]=z3;
+    }
+    // top surface
+    for (let j=j0;j<j1;j++){
+      for (let i=i0;i<i1;i++){
+        const z00=topZ[j*gridW+i], z10=topZ[j*gridW+i+1];
+        const z01=topZ[(j+1)*gridW+i], z11=topZ[(j+1)*gridW+i+1];
+        const x0=X(i), x1=X(i+1), y0=Y(j), y1=Y(j+1);
+        addTri(x0,y0,z00, x1,y0,z10, x1,y1,z11);
+        addTri(x0,y0,z00, x1,y1,z11, x0,y1,z01);
+      }
+    }
+    // flat bottom
+    for (let j=j0;j<j1;j++){
+      for (let i=i0;i<i1;i++){
+        const x0=X(i), x1=X(i+1), y0=Y(j), y1=Y(j+1);
+        addTri(x0,y0,0, x1,y1,0, x1,y0,0);
+        addTri(x0,y0,0, x0,y1,0, x1,y1,0);
+      }
+    }
+    // side walls
+    // Winding is counter-clockwise seen from OUTSIDE on every face, so all normals point out.
+    for (let i=i0;i<i1;i++){            // front wall (j = j0), normal -Y
+      const x0=X(i), x1=X(i+1), y=Y(j0);
+      const zt0=topZ[j0*gridW+i], zt1=topZ[j0*gridW+i+1];
+      addTri(x0,y,0, x1,y,0, x1,y,zt1);
+      addTri(x0,y,0, x1,y,zt1, x0,y,zt0);
+    }
+    for (let i=i0;i<i1;i++){            // back wall (j = j1), normal +Y
+      const x0=X(i), x1=X(i+1), y=Y(j1);
+      const zt0=topZ[j1*gridW+i], zt1=topZ[j1*gridW+i+1];
+      addTri(x0,y,0, x1,y,zt1, x1,y,0);
+      addTri(x0,y,0, x0,y,zt0, x1,y,zt1);
+    }
+    for (let j=j0;j<j1;j++){            // left (i = i0)
+      const y0=Y(j), y1=Y(j+1), x=X(i0);
+      const zt0=topZ[j*gridW+i0], zt1=topZ[(j+1)*gridW+i0];
+      addTri(x,y0,0, x,y1,zt1, x,y1,0);
+      addTri(x,y0,0, x,y0,zt0, x,y1,zt1);
+    }
+    for (let j=j0;j<j1;j++){            // right (i = i1)
+      const y0=Y(j), y1=Y(j+1), x=X(i1);
+      const zt0=topZ[j*gridW+i1], zt1=topZ[(j+1)*gridW+i1];
+      addTri(x,y0,0, x,y1,0, x,y1,zt1);
+      addTri(x,y0,0, x,y1,zt1, x,y0,zt0);
+    }
+    return pos;
+  }
+
+  // Minimal store-only ZIP writer (no dependencies) so all pieces download as one file.
+  const crcTable = (() => {
+    const t = new Uint32Array(256);
+    for (let n=0;n<256;n++){ let c=n; for (let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); t[n]=c>>>0; }
+    return t;
+  })();
+  function crc32(bytes){
+    let c = 0xFFFFFFFF;
+    for (let i=0;i<bytes.length;i++) c = crcTable[(c ^ bytes[i]) & 0xFF] ^ (c>>>8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function buildZipParts(files){
+    const enc = new TextEncoder();
+    const chunks = [], central = [];
+    let offset = 0;
+    for (const f of files){
+      const nameB = enc.encode(f.name);
+      const crc = crc32(f.data), size = f.data.length;
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true);
+      lh.setUint16(8,0,true); lh.setUint16(10,0,true); lh.setUint16(12,0x21,true);
+      lh.setUint32(14,crc,true); lh.setUint32(18,size,true); lh.setUint32(22,size,true);
+      lh.setUint16(26,nameB.length,true); lh.setUint16(28,0,true);
+      chunks.push(new Uint8Array(lh.buffer), nameB, f.data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true);
+      ch.setUint16(10,0,true); ch.setUint16(12,0,true); ch.setUint16(14,0x21,true);
+      ch.setUint32(16,crc,true); ch.setUint32(20,size,true); ch.setUint32(24,size,true);
+      ch.setUint16(28,nameB.length,true); ch.setUint16(30,0,true); ch.setUint16(32,0,true);
+      ch.setUint16(34,0,true); ch.setUint16(36,0,true); ch.setUint32(38,0,true); ch.setUint32(42,offset,true);
+      central.push(new Uint8Array(ch.buffer), nameB);
+      offset += 30 + nameB.length + size;
+    }
+    let cdSize = 0; central.forEach(c => cdSize += c.length);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0,0x06054b50,true); end.setUint16(4,0,true); end.setUint16(6,0,true);
+    end.setUint16(8,files.length,true); end.setUint16(10,files.length,true);
+    end.setUint32(12,cdSize,true); end.setUint32(16,offset,true); end.setUint16(20,0,true);
+    return [...chunks, ...central, new Uint8Array(end.buffer)];
+  }
+  // <<SPLIT-PURE-END>>
+
+  function recompute(){
+    if (!img) return;
+    procStatus.innerHTML = '<span class="spinner"></span>Processing…';
+    setTimeout(() => {
+      const resolution = parseInt(ctrl.res.value,10);
+      let gridW, gridH;
+      if (imgAspect <= 1){ gridW = resolution; gridH = Math.max(6, Math.round(resolution*imgAspect)); }
+      else { gridH = resolution; gridW = Math.max(6, Math.round(resolution/imgAspect)); }
+
+      const widthMM = parseFloat(ctrl.widthMM.value)||100;
+      const heightMM = parseFloat(ctrl.heightMM.value)||100;
+      const baseMM = parseFloat(ctrl.baseMM.value)||2;
+      const reliefMM = parseFloat(ctrl.reliefMM.value)||3;
+
+      const hRaw = computeHeightmap(gridW, gridH);
+      // Image row 0 is the TOP of the picture, but +Y on a printer bed is the BACK. Flip the rows
+      // so the top of the artwork lands at +Y: seen from above (how a hand reads it) the relief
+      // is upright and not mirrored.
+      const topZ = new Float32Array(gridW*gridH);
+      for (let j=0;j<gridH;j++){
+        const src = (gridH-1-j)*gridW;
+        for (let i=0;i<gridW;i++) topZ[j*gridW+i] = baseMM + hRaw[src+i]*reliefMM;
+      }
+
+      const dx = widthMM/(gridW-1), dy = heightMM/(gridH-1);
+      const splitOn = splitEl.checked;
+      let maxW = Math.max(20, parseFloat(ctrl.maxPieceW.value)||80);
+      let maxH = Math.max(20, parseFloat(ctrl.maxPieceH.value)||80);
+      // Round (delta) bed: a rectangle fits inside a circle when its diagonal <= diameter, so cap
+      // both sides at diameter/sqrt(2) — that guarantees the diagonal fits.
+      const bedDiam = parseFloat(ctrl.bedDiameter.value)||0;
+      if (splitOn && bedDiam > 0){
+        const lim = Math.max(20, bedDiam/Math.SQRT2);
+        maxW = Math.min(maxW, lim); maxH = Math.min(maxH, lim);
+      }
+      const colBounds = splitOn ? partition(gridW-1, dx, maxW) : [0, gridW-1];
+      const rowBounds = splitOn ? partition(gridH-1, dy, maxH) : [0, gridH-1];
+      const cols = colBounds.length-1, rows = rowBounds.length-1;
+
+      const gap = (cols*rows > 1) ? PREVIEW_GAP_MM : 0;
+      lastPieces = [];
+      const previewParts = [];
+      let maxPieceWmm = 0, maxPieceHmm = 0, totalTris = 0;
+      for (let r=0;r<rows;r++){
+        for (let c=0;c<cols;c++){
+          const i0=colBounds[c], i1=colBounds[c+1], j0=rowBounds[r], j1=rowBounds[r+1];
+          const pos = buildPieceSoup(topZ, gridW, i0, i1, j0, j1, dx, dy);
+          // r=0 is the bottom of the artwork (after the flip), so number rows from the top
+          const name = (cols*rows > 1) ? ('seethrough-part-r'+(rows-r)+'-c'+(c+1)+'.stl') : 'seethrough-model.stl';
+          lastPieces.push({ name, pos, row: rows-r, col: c+1, wMM:(i1-i0)*dx, hMM:(j1-j0)*dy });
+          previewParts.push({ pos, ox: i0*dx + c*gap, oy: j0*dy + r*gap });
+          maxPieceWmm = Math.max(maxPieceWmm, (i1-i0)*dx);
+          maxPieceHmm = Math.max(maxPieceHmm, (j1-j0)*dy);
+          totalTris += pos.length/9;
+        }
+      }
+      lastCols = cols; lastRows = rows;
+
+      let previewLen = 0; previewParts.forEach(pp => previewLen += pp.pos.length);
+      const previewPos = new Float32Array(previewLen);
+      let pc = 0;
+      previewParts.forEach(pp => {
+        for (let k=0;k<pp.pos.length;k+=3){
+          previewPos[pc++] = pp.pos[k]+pp.ox;
+          previewPos[pc++] = pp.pos[k+1]+pp.oy;
+          previewPos[pc++] = pp.pos[k+2];
+        }
+      });
+      updateThreeMesh(previewPos, widthMM + (cols-1)*gap, heightMM + (rows-1)*gap, baseMM+reliefMM);
+
+      const nPieces = cols*rows;
+      downloadBtn.textContent = nPieces > 1 ? ('Download '+nPieces+' pieces (ZIP)') : 'Download relief STL';
+      splitInfo.innerHTML = nPieces > 1
+        ? ('<b>'+cols+' × '+rows+' = '+nPieces+' pieces</b>, each up to '+maxPieceWmm.toFixed(1)+' × '+maxPieceHmm.toFixed(1)+' mm'+(bedDiam>0 ? (' (diagonal '+Math.hypot(maxPieceWmm,maxPieceHmm).toFixed(1)+' mm, fits a '+bedDiam+' mm round bed)') : '')+'. Preview shows them spaced apart; print each one flat, then glue the cut faces together.')
+        : 'The whole piece already fits within these limits — nothing to cut.';
+
+      const approxKB = Math.round((nPieces*84 + totalTris*50)/1024);
+      statStrip.innerHTML = '<span><b>'+gridW+'×'+gridH+'</b> grid</span><span><b>'+nPieces+'</b> piece'+(nPieces>1?'s':'')+'</span><span><b>'+totalTris.toLocaleString()+'</b> triangles</span><span><b>~'+approxKB.toLocaleString()+' KB</b> STL</span>';
+      procStatus.textContent = '';
+    }, 0);
+  }
+
+  // ---------- Three.js preview ----------
+  let scene, camera, renderer, mesh, threeReady = false;
+  let azimuth = 0.9, polar = 1.0, radius = 180, target = new THREE.Vector3(0,0,0);
+  let needsRender = true;
+  let dragging = false, lastX=0, lastY=0;
+
+  function initThreeIfNeeded(){
+    if (threeReady) return;
+    threeReady = true;
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(40, previewWrap.clientWidth/previewWrap.clientHeight, 0.1, 5000);
+    renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(previewWrap.clientWidth, previewWrap.clientHeight);
+    previewWrap.appendChild(renderer.domElement);
+
+    const hint = document.createElement('div');
+    hint.className = 'preview-hint';
+    hint.textContent = 'drag to orbit · scroll to zoom';
+    previewWrap.appendChild(hint);
+
+    const amb = new THREE.AmbientLight(0xffffff, 0.55);
+    scene.add(amb);
+    const dir1 = new THREE.DirectionalLight(0xfff2d9, 1.1);
+    dir1.position.set(120,180,220);
+    scene.add(dir1);
+    const dir2 = new THREE.DirectionalLight(0x6ea8ff, 0.35);
+    dir2.position.set(-150,-80,120);
+    scene.add(dir2);
+
+    const geo = new THREE.BufferGeometry();
+    const mat = new THREE.MeshStandardMaterial({ color:0xe0a13c, roughness:0.65, metalness:0.05, flatShading:true, side:THREE.DoubleSide });
+    mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+
+    renderer.domElement.addEventListener('mousedown', e => { dragging=true; lastX=e.clientX; lastY=e.clientY; });
+    window.addEventListener('mouseup', () => dragging=false);
+    window.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const dx = e.clientX-lastX, dy = e.clientY-lastY;
+      azimuth -= dx*0.0075;
+      polar = Math.min(Math.max(polar - dy*0.0075, 0.15), Math.PI-0.15);
+      lastX=e.clientX; lastY=e.clientY;
+      needsRender = true;
+    });
+    renderer.domElement.addEventListener('wheel', e => {
+      e.preventDefault();
+      radius = Math.min(Math.max(radius + e.deltaY*0.15, 40), 800);
+      needsRender = true;
+    }, { passive:false });
+
+    let touchLast=null;
+    renderer.domElement.addEventListener('touchstart', e => { if (e.touches.length===1){ touchLast={x:e.touches[0].clientX,y:e.touches[0].clientY}; } });
+    renderer.domElement.addEventListener('touchmove', e => {
+      if (e.touches.length===1 && touchLast){
+        const dx=e.touches[0].clientX-touchLast.x, dy=e.touches[0].clientY-touchLast.y;
+        azimuth -= dx*0.0075;
+        polar = Math.min(Math.max(polar - dy*0.0075, 0.15), Math.PI-0.15);
+        touchLast={x:e.touches[0].clientX,y:e.touches[0].clientY};
+        needsRender = true;
+        e.preventDefault();
+      }
+    }, { passive:false });
+    renderer.domElement.addEventListener('touchend', () => touchLast=null);
+
+    window.addEventListener('resize', () => {
+      if (!previewWrap.clientWidth) return;
+      camera.aspect = previewWrap.clientWidth/previewWrap.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(previewWrap.clientWidth, previewWrap.clientHeight);
+      needsRender = true;
+    });
+
+    animate();
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if (!renderer || !needsRender) return;
+    needsRender = false;
+    camera.position.set(
+      target.x + radius*Math.sin(polar)*Math.sin(azimuth),
+      target.y - radius*Math.cos(polar),
+      target.z + radius*Math.sin(polar)*Math.cos(azimuth)
+    );
+    camera.up.set(0,0,1);
+    camera.lookAt(target);
+    renderer.render(scene, camera);
+  }
+
+  function updateThreeMesh(pos, widthMM, heightMM, totalZ){
+    const cx = widthMM/2, cy = heightMM/2;
+    const centered = new Float32Array(pos.length);
+    for (let i=0;i<pos.length;i+=3){
+      centered[i] = pos[i]-cx;
+      centered[i+1] = pos[i+1]-cy;
+      centered[i+2] = pos[i+2];
+    }
+    mesh.geometry.dispose();
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(centered, 3));
+    geo.computeVertexNormals();
+    mesh.geometry = geo;
+
+    target.set(0,0,totalZ/2);
+    radius = Math.max(widthMM, heightMM) * 1.55;
+    needsRender = true;
+  }
+
+  // ---------- STL export (shared by relief + braille) ----------
+  function buildBinarySTL(pos){
+    const triCount = pos.length/9;
+    const view = new DataView(new ArrayBuffer(84 + triCount*50));   // 80-byte header stays zeroed
+    view.setUint32(80, triCount, true);
+    let offset = 84;
+    for (let t=0;t<triCount;t++){
+      const b = t*9;
+      // face normal = (B-A) x (C-A), normalised
+      const ux=pos[b+3]-pos[b],   uy=pos[b+4]-pos[b+1], uz=pos[b+5]-pos[b+2];
+      const vx=pos[b+6]-pos[b],   vy=pos[b+7]-pos[b+1], vz=pos[b+8]-pos[b+2];
+      let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+      const len = Math.hypot(nx,ny,nz) || 1;
+      view.setFloat32(offset,   nx/len, true);
+      view.setFloat32(offset+4, ny/len, true);
+      view.setFloat32(offset+8, nz/len, true);
+      for (let v=0; v<9; v++) view.setFloat32(offset+12+v*4, pos[b+v], true);
+      offset += 50;                                                  // 12 normal + 36 vertices + 2 attribute bytes
+    }
+    return view.buffer;
+  }
+
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function downloadSTL(buffer, filename){
+    downloadBlob(new Blob([buffer], { type:'application/sla' }), filename);
+  }
+
+  function buildAssemblyReadme(){
+    const lines = [];
+    lines.push('Seethrough — assembly guide');
+    lines.push('============================');
+    lines.push('');
+    lines.push('The artwork was cut into '+lastCols+' column(s) x '+lastRows+' row(s) = '+lastPieces.length+' pieces so each one fits a smaller print volume.');
+    lines.push('Every piece is a closed, flat-bottomed solid: print it flat on the bed, no supports needed.');
+    lines.push('');
+    lines.push('Layout, seen from above, as the artwork is meant to be read (r1 = top row, c1 = left column):');
+    lines.push('');
+    for (let r=1;r<=lastRows;r++){
+      const row = [];
+      for (let c=1;c<=lastCols;c++) row.push('[r'+r+'-c'+c+']');
+      lines.push('  ' + row.join(' '));
+    }
+    lines.push('');
+    lines.push('Pieces:');
+    lastPieces.slice().sort((a,b)=> a.row-b.row || a.col-b.col).forEach(p => {
+      lines.push('  '+p.name+'  —  '+p.wMM.toFixed(1)+' x '+p.hMM.toFixed(1)+' mm');
+    });
+    lines.push('');
+    lines.push('Assembly: the heights along every cut are identical on both sides, so the pieces meet with a');
+    lines.push('continuous surface. Glue the flat cut faces together (cyanoacrylate or epoxy) on a flat surface,');
+    lines.push('checking the layout above. Sand any slightly raised seam lightly, then test the join by touch.');
+    lines.push('Tip: identify each piece as soon as it comes off the printer — pencil on the underside, or a tactile mark (e.g. 1 dot of glue = row 1) if the person assembling is blind.');
+    return lines.join('\n');
+  }
+
+  downloadBtn.addEventListener('click', () => {
+    if (!lastPieces.length) return;
+    if (lastPieces.length === 1){
+      downloadSTL(buildBinarySTL(lastPieces[0].pos), lastPieces[0].name);
+      return;
+    }
+    const enc = new TextEncoder();
+    const files = lastPieces.map(p => ({ name: p.name, data: new Uint8Array(buildBinarySTL(p.pos)) }));
+    files.push({ name: 'ASSEMBLY.txt', data: enc.encode(buildAssemblyReadme()) });
+    downloadBlob(new Blob(buildZipParts(files), { type:'application/zip' }), 'seethrough-pieces.zip');
+  });
+
+  // ================= Braille label =================
+  const brailleMap = {
+    'a':[1],'b':[1,2],'c':[1,4],'d':[1,4,5],'e':[1,5],'f':[1,2,4],'g':[1,2,4,5],'h':[1,2,5],'i':[2,4],'j':[2,4,5],
+    'k':[1,3],'l':[1,2,3],'m':[1,3,4],'n':[1,3,4,5],'o':[1,3,5],'p':[1,2,3,4],'q':[1,2,3,4,5],'r':[1,2,3,5],'s':[2,3,4],'t':[2,3,4,5],
+    'u':[1,3,6],'v':[1,2,3,6],'w':[2,4,5,6],'x':[1,3,4,6],'y':[1,3,4,5,6],'z':[1,3,5,6],
+    ' ':[], '.':[2,5,6], ',':[2], "'":[3], '-':[3,6], '!':[2,3,5], '?':[2,3,6]
+  };
+  const digitMap = {'1':'a','2':'b','3':'c','4':'d','5':'e','6':'f','7':'g','8':'h','9':'i','0':'j'};
+  const CAPITAL_SIGN=[6], NUMBER_SIGN=[3,4,5,6];
+
+  // This table only has plain letters. Accented ones (é, ã, ç...) have their own cells in
+  // Portuguese braille, so for now they are folded to the base letter instead of being dropped.
+  function foldAccents(text){
+    return text.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function isBrailleSupported(ch){
+    return (ch>='0' && ch<='9') || brailleMap.hasOwnProperty(ch.toLowerCase());
+  }
+
+  function textToBrailleCells(text){
+    const cells=[];
+    let inNumberMode=false;
+    for (const ch of foldAccents(text)){
+      if (ch>='0' && ch<='9'){
+        if (!inNumberMode){ cells.push(NUMBER_SIGN); inNumberMode=true; }
+        cells.push(brailleMap[digitMap[ch]]);
+        continue;
+      }
+      inNumberMode=false;
+      if (ch>='A' && ch<='Z'){
+        cells.push(CAPITAL_SIGN);
+        cells.push(brailleMap[ch.toLowerCase()] || []);
+        continue;
+      }
+      const lower = ch.toLowerCase();
+      cells.push(brailleMap.hasOwnProperty(lower) ? brailleMap[lower] : []);
+    }
+    return cells;
+  }
+
+  const DOT_PITCH=2.5, CELL_PITCH=6.0, LINE_PITCH=10.0, DOT_RADIUS=0.75, DOT_HEIGHT=0.6, PLATE_THICK=1.5, MARGIN=3.5;
+  const DOT_LOCAL = {1:[0,0],2:[0,DOT_PITCH],3:[0,2*DOT_PITCH],4:[DOT_PITCH,0],5:[DOT_PITCH,DOT_PITCH],6:[DOT_PITCH,2*DOT_PITCH]};
+
+  function pushTri(arr, x1,y1,z1,x2,y2,z2,x3,y3,z3){ arr.push(x1,y1,z1,x2,y2,z2,x3,y3,z3); }
+
+  function addBoxSolid(arr, ox,oy,oz,w,d,th){
+    const c = (ix,iy,iz) => [ox+ix*w, oy+iy*d, oz+iz*th];
+    const faces = [
+      [[0,0,0],[0,0,1],[0,1,1],[0,1,0]],
+      [[1,0,0],[1,1,0],[1,1,1],[1,0,1]],
+      [[0,0,0],[1,0,0],[1,0,1],[0,0,1]],
+      [[0,1,0],[0,1,1],[1,1,1],[1,1,0]],
+      [[0,0,0],[0,1,0],[1,1,0],[1,0,0]],
+      [[0,0,1],[1,0,1],[1,1,1],[0,1,1]],
+    ];
+    for (const f of faces){
+      const p0=c(f[0][0],f[0][1],f[0][2]), p1=c(f[1][0],f[1][1],f[1][2]), p2=c(f[2][0],f[2][1],f[2][2]), p3=c(f[3][0],f[3][1],f[3][2]);
+      pushTri(arr, p0[0],p0[1],p0[2], p1[0],p1[1],p1[2], p2[0],p2[1],p2[2]);
+      pushTri(arr, p0[0],p0[1],p0[2], p2[0],p2[1],p2[2], p3[0],p3[1],p3[2]);
+    }
+  }
+
+  function addDomeSolid(arr, cx,cy,baseZ,radius,height,ringSegments,radialSegments){
+    const rings=[];
+    for (let k=0;k<ringSegments;k++){
+      const angle=(k/ringSegments)*(Math.PI/2);
+      const rr=radius*Math.cos(angle), rz=baseZ+height*Math.sin(angle);
+      const ring=[];
+      for (let i=0;i<radialSegments;i++){
+        const a=i*(2*Math.PI/radialSegments);
+        ring.push([cx+rr*Math.cos(a), cy+rr*Math.sin(a), rz]);
+      }
+      rings.push(ring);
+    }
+    const pole=[cx,cy,baseZ+height], center=[cx,cy,baseZ];
+    for (let k=0;k<ringSegments-1;k++){
+      for (let i=0;i<radialSegments;i++){
+        const ni=(i+1)%radialSegments;
+        const a=rings[k][i], b=rings[k][ni], c1=rings[k+1][i], d=rings[k+1][ni];
+        pushTri(arr, a[0],a[1],a[2], b[0],b[1],b[2], c1[0],c1[1],c1[2]);
+        pushTri(arr, b[0],b[1],b[2], d[0],d[1],d[2], c1[0],c1[1],c1[2]);
+      }
+    }
+    const lastRing = rings[ringSegments-1];
+    for (let i=0;i<radialSegments;i++){
+      const ni=(i+1)%radialSegments;
+      const a=lastRing[i], b=lastRing[ni];
+      pushTri(arr, a[0],a[1],a[2], b[0],b[1],b[2], pole[0],pole[1],pole[2]);
+    }
+    const baseRing = rings[0];
+    for (let i=0;i<radialSegments;i++){
+      const ni=(i+1)%radialSegments;
+      const a=baseRing[i], b=baseRing[ni];
+      pushTri(arr, center[0],center[1],center[2], b[0],b[1],b[2], a[0],a[1],a[2]);
+    }
+  }
+
+  function buildBrailleModel(){
+    const titleText = document.getElementById('brailleTitle').value.trim();
+    const artistText = document.getElementById('brailleArtist').value.trim();
+    if (!titleText && !artistText) return null;
+
+    const lines = [];
+    if (titleText) lines.push(textToBrailleCells(titleText));
+    if (artistText) lines.push(textToBrailleCells(artistText));
+
+    const maxCells = Math.max(1, ...lines.map(l => l.length));
+    const contentW = (maxCells-1)*CELL_PITCH + DOT_PITCH;
+    const contentH = (lines.length-1)*LINE_PITCH + 2*DOT_PITCH;
+    const plateW = contentW + MARGIN*2;
+    const plateH = contentH + MARGIN*2;
+
+    const arr = [];
+    addBoxSolid(arr, 0,0,0, plateW, plateH, PLATE_THICK);
+
+    lines.forEach((cells, li) => {
+      const rowY = MARGIN + li*LINE_PITCH;
+      cells.forEach((dots, ci) => {
+        const colX = MARGIN + ci*CELL_PITCH;
+        dots.forEach(dotNum => {
+          const local = DOT_LOCAL[dotNum];
+          addDomeSolid(arr, colX+local[0], rowY+local[1], PLATE_THICK, DOT_RADIUS, DOT_HEIGHT, 6, 12);
+        });
+      });
+    });
+
+    const skipped = [...foldAccents(titleText + artistText)].filter(ch => !isBrailleSupported(ch)).length;
+    return { positions: Float32Array.from(arr), width: plateW, height: plateH, lines, skipped };
+  }
+
+  function drawBraillePreview(model){
+    const canvas = document.getElementById('brailleCanvas');
+    const bctx = canvas.getContext('2d');
+    bctx.clearRect(0,0,canvas.width,canvas.height);
+    const statsEl = document.getElementById('brailleStats');
+
+    if (!model){
+      statsEl.textContent = 'Enter a title or artist to preview the braille cells.';
+      document.getElementById('brailleDownloadBtn').disabled = true;
+      return;
+    }
+    const px = 10; // pixels per mm in preview
+    canvas.width = Math.max(200, model.width*px);
+    canvas.height = Math.max(60, model.height*px);
+    bctx.fillStyle = '#2b2620';
+    bctx.fillRect(0,0,canvas.width,canvas.height);
+    bctx.fillStyle = '#e0a13c';
+    model.lines.forEach((cells, li) => {
+      const rowY = MARGIN + li*LINE_PITCH;
+      cells.forEach((dots, ci) => {
+        const colX = MARGIN + ci*CELL_PITCH;
+        dots.forEach(dotNum => {
+          const local = DOT_LOCAL[dotNum];
+          const x = (colX+local[0])*px, y = (rowY+local[1])*px;
+          bctx.beginPath();
+          bctx.arc(x, y, DOT_RADIUS*px, 0, Math.PI*2);
+          bctx.fill();
+        });
+      });
+    });
+    const totalCells = model.lines.reduce((s,l)=>s+l.length,0);
+    statsEl.textContent = model.lines.length+' line(s), '+totalCells+' cell(s) — plate '+model.width.toFixed(1)+' × '+model.height.toFixed(1)+' mm'
+      + (model.skipped ? ' — '+model.skipped+' unsupported character(s) left blank' : '');
+    document.getElementById('brailleDownloadBtn').disabled = false;
+  }
+
+  let brailleModel = null;
+  function updateBraillePreview(){
+    brailleModel = buildBrailleModel();
+    drawBraillePreview(brailleModel);
+  }
+  document.getElementById('brailleTitle').addEventListener('input', updateBraillePreview);
+  document.getElementById('brailleArtist').addEventListener('input', updateBraillePreview);
+  document.getElementById('brailleDownloadBtn').addEventListener('click', () => {
+    if (!brailleModel) return;
+    downloadSTL(buildBinarySTL(brailleModel.positions), 'seethrough-braille-label.stl');
+  });
+  updateBraillePreview();
+
+})();
+</script>
+</body>
+</html>
